@@ -17,40 +17,48 @@
 
 ## 暴露的 MCP 工具
 
-### 快速参考表
+### 参数快速指南
 
 #### 模型 (可选，不传则使用默认模型)
 
-| 值 | 简称 | 说明 |
-|------|--------|------|
-| `claude-3-5-sonnet-20241022` | Sonnet | 高性能平衡模型 **(推荐)** |
-| `claude-3-opus-20250219` | Opus | 最强大的模型，适合复杂任务 |
-| `claude-3-haiku-20250307` | Haiku | 最轻量的模型，速度最快 |
+传入以下值之一即可，无需版本号：
+
+```
+opus        # 最强大，适合复杂任务
+sonnet      # 平衡性能和速度 (推荐)
+haiku       # 最轻量，速度最快
+```
+
+不传 → 使用默认模型
 
 #### 权限模式 (可选，不传则使用 `default`)
 
-| 值 | 说明 |
-|------|------|
-| `default` | 默认模式，需要用户确认操作 **(推荐)** |
-| `acceptEdits` | 自动接受编辑建议，无需确认 |
-| `plan` | 仅规划模式，生成计划但不执行 |
-| `bypassPermissions` | 绕过权限检查，直接执行 |
+传入以下值之一：
+
+```
+default             # 需要用户确认 (推荐)
+acceptEdits         # 自动接受编辑
+plan                # 仅规划，不执行
+bypassPermissions   # 绕过权限检查
+```
+
+不传 → 使用 `default`
 
 #### 其他参数
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `closeAfter` | `false` | `true`: 自动关闭会话 / `false`: 保持打开 |
-| `includeThinking` | `false` | `true`: 返回思考过程 / `false`: 仅返回答案 |
+```
+closeAfter: true/false           # 默认 false，是否自动关闭会话
+includeThinking: true/false      # 默认 false，是否返回思考过程
+```
 
 ### `claude_session_create`
 
 - **功能**：创建新的 Claude 会话并返回 `sessionId`。
 - **参数**：
-  - `cwd` *(string, optional)*：工作目录，传入后作为 `ClaudeAgentOptions.cwd`。
-  - `model` *(string, optional)*：启动时使用的模型，见快速参考表。不传则使用默认模型。
-  - `permissionMode` *(PermissionMode, optional)*：初始权限模式，见快速参考表。不传则使用 `default`。
-  - `systemPrompt` *(string, optional)*：追加系统提示词。
+  - `cwd` *(string, optional)*：工作目录
+  - `model` *(string, optional)*：模型选择：`opus` | `sonnet` | `haiku`，不传则使用默认模型
+  - `permissionMode` *(string, optional)*：权限模式：`default` | `acceptEdits` | `plan` | `bypassPermissions`，不传则使用 `default`
+  - `systemPrompt` *(string, optional)*：自定义系统提示词
 - **返回**：
   - `sessionId`: 生成的会话 ID。
   - `model`: 当前模型。
@@ -69,14 +77,10 @@
 
 - **功能**：向指定会话发送用户提示词，获取流式回复。
 - **主要参数**：
-  - `sessionId` *(string, required)*：会话标识。
-  - `prompt` *(string, required)*：用户输入内容。
-  - `closeAfter` *(boolean, optional, default: false)*：是否在完成后自动关闭会话。
-    - `true`: 获得响应后自动关闭会话并释放资源
-    - `false`: 保持会话打开，可继续使用
-  - `includeThinking` *(boolean, optional, default: false)*：是否返回 Claude 的思考内容。
-    - `true`: 返回模型的思考过程（仅支持部分模型）
-    - `false`: 仅返回最终答案
+  - `sessionId` *(string, required)*：会话标识
+  - `prompt` *(string, required)*：用户输入内容
+  - `closeAfter` *(boolean, optional, default: false)*：是否自动关闭会话
+  - `includeThinking` *(boolean, optional, default: false)*：是否返回模型的思考过程
 - **流式反馈**：
   - 消费 `receiveMessages()`，区分消息类型后通过 `server.server.sendLoggingMessage` 推送：
     - `assistant`（文本片段）→ `info` 日志。
@@ -104,8 +108,8 @@
 
 - **功能**：切换指定会话使用的模型。
 - **参数**：
-  - `sessionId` *(string, required)*：会话标识。
-  - `model` *(string, required)*：目标模型，见快速参考表。支持所有 Anthropic 提供的模型。
+  - `sessionId` *(string, required)*：会话标识
+  - `model` *(string, required)*：目标模型：`opus` | `sonnet` | `haiku`
 - **实现**：调用 `client.setModel(model)`，并等待下一条 `system` 消息以获取真实模型 ID。
 - **返回**：`{ sessionId, requestedModel, resolvedModel }`；若 CLI 未返回新模型，则 `resolvedModel` 可能为 `null`。
 
@@ -113,8 +117,8 @@
 
 - **功能**：切换权限模式。
 - **参数**：
-  - `sessionId` *(string, required)*：会话标识。
-  - `permissionMode` *(PermissionMode, required)*：权限模式，见快速参考表。
+  - `sessionId` *(string, required)*：会话标识
+  - `permissionMode` *(string, required)*：权限模式：`default` | `acceptEdits` | `plan` | `bypassPermissions`
 - **实现**：调用 `client.setPermissionMode`。
 - **返回**：`{ sessionId, permissionMode }`。
 
