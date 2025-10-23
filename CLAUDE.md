@@ -122,6 +122,25 @@ includeThinking: true/false      # 默认 false，是否返回思考过程
 - **实现**：调用 `client.setPermissionMode`。
 - **返回**：`{ sessionId, permissionMode }`。
 
+### `claude_direct_query` ⭐ 一键查询工具
+
+- **功能**：一步到位的查询工具，自动创建临时会话、执行查询、销毁会话。无需手动管理会话生命周期。
+- **参数**：
+  - `prompt` *(string, required)*：用户输入内容
+  - `model` *(string, optional)*：模型选择：`opus` | `sonnet` | `haiku`，不传则使用默认模型
+  - `permissionMode` *(string, optional)*：权限模式：`default` | `acceptEdits` | `plan` | `bypassPermissions`，不传则使用 `default`
+  - `includeThinking` *(boolean, optional, default: false)*：是否返回模型的思考过程
+  - `systemPrompt` *(string, optional)*：自定义系统提示词
+  - `cwd` *(string, optional)*：工作目录
+- **流程**：
+  1. 自动创建临时会话
+  2. 发送查询
+  3. 等待响应
+  4. 自动销毁会话
+  5. 返回结果
+- **返回**：与 `claude_chat_query` 相同的响应格式
+- **示例用途**：一次性查询，不需要多轮对话
+
 > 未来若添加列出会话、查询历史等功能，请继续按照 `claude_` 前缀命名，并复用同一会话缓存。
 
 ## 流式输出策略

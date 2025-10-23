@@ -107,6 +107,16 @@ const modeArgs = {
 } satisfies z.ZodRawShape;
 const modeSchema = z.object(modeArgs);
 
+const directQueryArgs = {
+  prompt: z.string(),
+  model: z.string().min(1).optional(),
+  permissionMode: permissionModeSchema.optional(),
+  includeThinking: z.boolean().optional(),
+  systemPrompt: z.string().min(1).optional(),
+  cwd: z.string().min(1).optional(),
+} satisfies z.ZodRawShape;
+const directQuerySchema = z.object(directQueryArgs);
+
 function toNullable(value?: string): string | null | undefined {
   if (value === undefined) {
     return undefined;
@@ -785,6 +795,81 @@ server.tool("claude_chat_mode", modeArgs, async ({ sessionId, permissionMode }) 
       permissionMode,
     },
   } satisfies CallToolResult;
+});
+
+server.tool("claude_direct_query", directQueryArgs, async (args) => {
+  // Create a temporary session, execute query, and clean up
+  const sessionId = randomUUID();
+  const clientOptions = {
+    cwd: toNullable(args.cwd) ?? null,
+    model: toNullable(args.model) ?? null,
+    permissionMode: args.permissionMode ?? null,
+    systemPrompt: toNullable(args.systemPrompt) ?? null,
+    includePartialMessages: true,
+  } satisfies ConstructorParameters<typeof ClaudeAgentSDKClient>[0];
+
+  const client = new ClaudeAgentSDKClient(clientOptions);
+  try {
+    await client.connect();
+  } catch (error) {
+    throw new McpError(
+      ErrorCode.InternalError,
+      `Failed to create Claude session: ${(error as Error).message}`
+    );
+  }
+
+  const session: ClaudeSessionState = {
+    sessionId,
+    client,
+    options: {
+      cwd: clientOptions.cwd,
+      model: clientOptions.model,
+      permissionMode: clientOptions.permissionMode,
+      systemPrompt: clientOptions.systemPrompt,
+    },
+    createdAt: new Date(),
+    pendingQueries: [],
+    closed: false,
+    modelWaiters: [],
+  };
+
+  sessions.set(sessionId, session);
+  startMessagePump(session);
+  await sendLog(session, "info", `Direct query session ${sessionId} created.`);
+
+  return await new Promise<CallToolResult>((resolve, reject) => {
+    const tracker: PendingQuery = {
+      includeThinking: Boolean(args.includeThinking),
+      closeAfter: true, // Always close after for direct query
+      resolve: async (result: CallToolResult) => {
+        // Clean up session immediately
+        await shutdownSession(sessionId);
+        resolve(result);
+      },
+      reject,
+      finalTextChunks: [],
+      thinkingChunks: [],
+      toolInvocations: [],
+      toolInvocationMap: new Map(),
+      completed: false,
+    };
+
+    session.pendingQueries.push(tracker);
+
+    session.client
+      .query(args.prompt, session.sessionId)
+      .then(() => {
+        void sendLog(
+          session,
+          "debug",
+          `Direct query session ${session.sessionId} sent prompt.`
+        );
+      })
+      .catch((error) => {
+        void shutdownSession(sessionId);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      });
+  });
 });
 
 export async function startServer(): Promise<void> {
