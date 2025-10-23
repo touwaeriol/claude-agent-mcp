@@ -126,7 +126,27 @@ ANTHROPIC_API_KEY = "${ANTHROPIC_API_KEY}"
 
 配置完成后，在 Codex 中可以使用以下 MCP 工具：
 
-### 会话管理
+### ⭐ 快速查询（推荐一次性工作使用）
+
+```
+claude_direct_query      # 一键查询 - 自动创建/销毁临时会话
+```
+
+**参数:**
+- `prompt`: 用户输入内容 (必需)
+- `model`: `opus` | `sonnet` | `haiku` (可选)
+- `permissionMode`: `default` | `acceptEdits` | `plan` | `bypassPermissions` (可选)
+- `includeThinking`: `true` | `false` (可选，默认 false)
+- `systemPrompt`: 自定义系统提示词 (可选)
+- `cwd`: 工作目录 (可选)
+
+**特点:**
+- ✅ 无需手动创建和关闭会话
+- ✅ 一步到位的查询
+- ✅ 自动处理会话生命周期
+- ✅ 适合一次性工作
+
+### 会话管理（用于多轮对话）
 
 ```
 claude_session_create    # 创建新会话
@@ -138,7 +158,7 @@ claude_session_close     # 关闭会话
 - `permissionMode`: `default` | `acceptEdits` | `plan` | `bypassPermissions` (可选)
 - `cwd`: 工作目录 (可选)
 
-### 对话交互
+### 对话交互（需配合会话使用）
 
 ```
 claude_chat_query        # 发送查询
