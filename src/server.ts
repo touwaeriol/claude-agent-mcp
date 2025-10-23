@@ -132,11 +132,11 @@ function ensureSession(sessionId: string): ClaudeSessionState {
   if (!session) {
     throw new McpError(
       ErrorCode.InvalidParams,
-      `会话 ${sessionId} 不存在或已关闭。`
+      `Session ${sessionId} does not exist or is closed.`
     );
   }
   if (session.closed) {
-    throw new McpError(ErrorCode.InvalidParams, `会话 ${sessionId} 已关闭。`);
+    throw new McpError(ErrorCode.InvalidParams, `Session ${sessionId} is closed.`);
   }
   return session;
 }
@@ -151,14 +151,14 @@ async function shutdownSession(sessionId: string): Promise<void> {
     return;
   }
   session.closed = true;
-  await sendLog(session, "info", `正在关闭会话 ${sessionId}。`);
+  await sendLog(session, "info", `Closing session ${sessionId}.`);
   sessions.delete(sessionId);
 
   const pending = [...session.pendingQueries];
   session.pendingQueries.length = 0;
   for (const tracker of pending) {
     if (!tracker.completed) {
-      tracker.reject(new Error("会话已关闭，查询被中断。"));
+      tracker.reject(new Error("Session closed, query interrupted."));
     }
   }
 
@@ -174,7 +174,7 @@ async function shutdownSession(sessionId: string): Promise<void> {
     await sendLog(
       session,
       "warning",
-      `断开会话 ${sessionId} 时出现错误：${(error as Error).message}`
+      `Error disconnecting session ${sessionId}: ${(error as Error).message}`
     );
   }
 }
@@ -196,7 +196,7 @@ function startMessagePump(session: ClaudeSessionState): void {
       await sendLog(
         session,
         "error",
-        `会话 ${session.sessionId} 流式通信异常：${(error as Error).message}`
+        `Session ${session.sessionId} stream error: ${(error as Error).message}`
       );
       const pending = [...session.pendingQueries];
       session.pendingQueries.length = 0;
@@ -229,7 +229,7 @@ function ensureNoConcurrentQuery(session: ClaudeSessionState): void {
   if (active && !active.completed) {
     throw new McpError(
       ErrorCode.InvalidParams,
-      `会话 ${session.sessionId} 正在处理中，暂不支持并发查询。`
+      `Session ${session.sessionId} is processing, concurrent queries not supported.`
     );
   }
 }
@@ -318,7 +318,7 @@ function registerToolUse(
   void sendLog(
     session,
     "debug",
-    `会话 ${session.sessionId} 调用工具 ${record.name ?? "<unknown>"}`
+    `Session ${session.sessionId} tool invocation: ${record.name ?? "<unknown>"}`
   );
 }
 
@@ -373,7 +373,7 @@ async function handleStreamMessage(
     await sendLog(
       session,
       "debug",
-      `会话 ${session.sessionId} 系统事件：${JSON.stringify(message)}`
+      `Session ${session.sessionId} system event: ${JSON.stringify(message)}`
     );
     const model = message.model;
     if (typeof model === "string") {
@@ -432,7 +432,7 @@ async function handleStreamMessage(
       await sendLog(
         session,
         "debug",
-        `会话 ${session.sessionId} 助手消息：${JSON.stringify(
+        `Session ${session.sessionId} assistant message: ${JSON.stringify(
           assistantMessage
         )}`
       );
@@ -458,7 +458,7 @@ async function handleStreamMessage(
     await sendLog(
       session,
       "debug",
-      `会话 ${session.sessionId} 工具结果：${JSON.stringify(userMessage)}`
+      `Session ${session.sessionId} tool result: ${JSON.stringify(userMessage)}`
     );
     return;
   }
@@ -554,7 +554,7 @@ async function handleStreamMessage(
     await sendLog(
       session,
       "info",
-      `会话 ${session.sessionId} 查询完成。`
+      `Session ${session.sessionId} query completed.`
     );
     return;
   }
@@ -563,10 +563,10 @@ async function handleStreamMessage(
     await sendLog(
       session,
       "error",
-      `Claude CLI 错误：${JSON.stringify(message)}`
+      `Claude CLI error: ${JSON.stringify(message)}`
     );
     if (tracker && !tracker.completed) {
-      tracker.reject(new Error("Claude CLI 返回错误。"));
+      tracker.reject(new Error("Claude CLI returned error."));
       const index = session.pendingQueries.indexOf(tracker);
       if (index !== -1) {
         session.pendingQueries.splice(index, 1);
@@ -578,7 +578,7 @@ async function handleStreamMessage(
   await sendLog(
     session,
     "debug",
-    `会话 ${session.sessionId} 收到未分类消息：${JSON.stringify(message)}`
+    `Session ${session.sessionId} received unclassified message: ${JSON.stringify(message)}`
   );
 }
 
@@ -609,7 +609,7 @@ server.tool("claude_session_create", createSessionArgs, async (args) => {
   } catch (error) {
     throw new McpError(
       ErrorCode.InternalError,
-      `无法创建 Claude 会话：${(error as Error).message}`
+      `Failed to create Claude session: ${(error as Error).message}`
     );
   }
 
@@ -630,13 +630,13 @@ server.tool("claude_session_create", createSessionArgs, async (args) => {
 
   sessions.set(sessionId, session);
   startMessagePump(session);
-  await sendLog(session, "info", `会话 ${sessionId} 已创建。`);
+  await sendLog(session, "info", `Session ${sessionId} created.`);
 
   const response: CallToolResult = {
     content: [
       {
         type: "text",
-        text: `Claude 会话已创建：${sessionId}`,
+        text: `Claude session created: ${sessionId}`,
       },
     ],
     structuredContent: {
@@ -657,18 +657,18 @@ server.tool("claude_session_close", closeSessionArgs, async ({ sessionId }) => {
   if (!session || session.closed) {
     throw new McpError(
       ErrorCode.InvalidParams,
-      `会话 ${sessionId} 不存在或已关闭。`
+      `Session ${sessionId} does not exist or is closed.`
     );
   }
 
   await shutdownSession(sessionId);
-  await sendLog(undefined, "info", `会话 ${sessionId} 已关闭。`);
+  await sendLog(undefined, "info", `Session ${sessionId} closed.`);
 
   return {
     content: [
       {
         type: "text",
-        text: `会话 ${sessionId} 已关闭。`,
+        text: `Session ${sessionId} closed.`,
       },
     ],
     structuredContent: {
@@ -719,13 +719,13 @@ server.tool("claude_chat_query", queryArgs, async (args) => {
 server.tool("claude_chat_interrupt", interruptArgs, async ({ sessionId }) => {
   const session = ensureSession(sessionId);
   await session.client.interrupt();
-  await sendLog(session, "warning", `会话 ${sessionId} 请求中断。`);
+  await sendLog(session, "warning", `Session ${sessionId} interrupt requested.`);
 
   return {
     content: [
       {
         type: "text",
-        text: `会话 ${sessionId} 已发送中断指令。`,
+        text: `Session ${sessionId} interrupt requested.`,
       },
     ],
     structuredContent: {
@@ -745,14 +745,14 @@ server.tool("claude_chat_model", modelArgs, async ({ sessionId, model }) => {
   await sendLog(
     session,
     "info",
-    `会话 ${sessionId} 模型切换为 ${resolvedModel ?? model}（请求值：${model}）。`
+    `Session ${sessionId} model switched to ${resolvedModel ?? model} (requested: ${model}).`
   );
 
   return {
     content: [
       {
         type: "text",
-        text: `模型已切换为 ${resolvedModel ?? model}。`,
+        text: `Model switched to ${resolvedModel ?? model}.`,
       },
     ],
     structuredContent: {
@@ -770,14 +770,14 @@ server.tool("claude_chat_mode", modeArgs, async ({ sessionId, permissionMode }) 
   await sendLog(
     session,
     "info",
-    `会话 ${sessionId} 权限模式切换为 ${permissionMode}。`
+    `Session ${sessionId} permission mode switched to ${permissionMode}.`
   );
 
   return {
     content: [
       {
         type: "text",
-        text: `权限模式已切换为 ${permissionMode}。`,
+        text: `Permission mode switched to ${permissionMode}.`,
       },
     ],
     structuredContent: {
