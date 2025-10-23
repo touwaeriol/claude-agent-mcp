@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2025-10-23
+
+### Added
+- **One-Step Query Tool**: `claude_direct_query` for direct queries without session management
+  - Automatically creates temporary session
+  - Executes query and returns response
+  - Auto-cleans resources after completion
+  - Perfect for one-time queries and quick prototyping
+- **Enhanced Documentation**: Updated CODEX_SETUP.md with new tool usage guide
+
+### Changed
+- Tool count increased from 6 to 7
+
+## [1.1.1] - 2025-10-23
+
+### Added
+- **Code Internationalization**: All Chinese logs and error messages replaced with English (27+ changes)
+
 ## [1.1.0] - 2025-10-23
 
 ### Added
