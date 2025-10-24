@@ -8,6 +8,7 @@
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { LoggingMessageNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
 import path from 'path';
 
 const colors = {
@@ -99,6 +100,23 @@ async function main() {
     });
 
     await client.connect(transport);
+    client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
+      const payload =
+        typeof notification.params.data === 'string'
+          ? notification.params.data
+          : JSON.stringify(notification.params.data);
+      log(`[LOG][${notification.params.level}] ${payload}`, colors.blue);
+    });
+
+    try {
+      await client.setLoggingLevel('debug');
+      logSuccess('日志级别已设置为 debug');
+    } catch (error) {
+      logError(
+        `设置日志级别失败: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
     logSuccess('客户端已连接到服务器');
 
     // 2. 获取可用工具
@@ -113,11 +131,11 @@ async function main() {
       log(`  • ${tool.name}`, colors.cyan);
     }
 
-    if (tools.length !== 6) {
-      throw new Error(`期望 6 个工具，但找到 ${tools.length} 个`);
+    if (tools.length !== 10) {
+      throw new Error(`期望 10 个工具，但找到 ${tools.length} 个`);
     }
 
-    logSuccess('所有 6 个工具都已注册');
+    logSuccess('所有工具都已注册');
 
     // 3. 测试每个工具
     logTitle('步骤 3: 测试 MCP 工具');

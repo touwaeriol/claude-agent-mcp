@@ -12,17 +12,18 @@ Claude Agent MCP is a Node.js-based Model Context Protocol (MCP) server that bri
 
 ### Features
 
-- **MCP Server Implementation**: Built on `@modelcontextprotocol/sdk` for standards-compliant MCP protocol support
-- **Session Management**: Leverage `ClaudeAgentSDKClient` for robust session handling
-- **Six Core Tools**:
-  - `claude_session_create` - Create new Claude sessions
-  - `claude_session_close` - Close and clean up sessions
-  - `claude_chat_query` - Send prompts and receive streaming responses
-  - `claude_chat_interrupt` - Interrupt active queries
-  - `claude_chat_model` - Switch between AI models
-  - `claude_chat_mode` - Change permission modes
-- **Streaming Logging**: Structured logging with `info`, `debug`, and `error` levels for different message types
-- **Full Test Coverage**: 112 unit tests, 29 integration tests, and real-world testing
+- **Standards-Compliant MCP Server**: Built on `@modelcontextprotocol/sdk` with full logging support and graceful shutdown handling.
+- **Modular Runtime**: `src/core/` houses dedicated modules for session storage, message pumping, schemas, and logging helpers.
+- **Session Tooling**:
+  - `claude_session_create` / `claude_session_close`
+  - `claude_session_list` / `claude_session_status`
+  - `claude_direct_query` for one-off prompts without manual lifecycle management
+- **Chat Controls**:
+  - `claude_chat_query`, `claude_chat_interrupt`
+  - `claude_chat_model`, `claude_chat_mode`
+  - `claude_server_config` to update runtime parameters (e.g., model update timeout)
+- **Streaming Feedback**: Message pump consumes `receiveMessages()` and emits structured `info`, `debug`, and `error` logs per MCP spec.
+- **Streaming Feedback**: Message pump consumes `receiveMessages()` and emits structured `info`, `debug`, and `error` logs per MCP spec. The server advertises the MCP `logging` capability, so clients can subscribe to `notifications/message` and optionally call `logging/setLevel` (for example `client.setLoggingLevel('debug')`) to control verbosity.
 
 ### Quick Start
 
@@ -112,53 +113,43 @@ args = ["claude-agent-mcp"]
 
 ## Testing
 
-Run the integration test suite:
+Targeted unit tests validate the modular runtime without requiring a live Claude CLI:
 
-```bash
-npm install
-npm run build
-npx ts-node scripts/real-integration-test.ts
-```
+- `tests/message-pump.test.ts` exercises streaming aggregation, model waiters, and error cleanup.
+- `tests/session-store.test.ts` covers session lifecycle helpers and guard rails.
 
-Test coverage:
-- ✅ 112 unit tests across all core functionality
-- ✅ 29 integration tests for deployment readiness
-- ✅ Full MCP protocol compliance verification
-- ✅ Real-world functional testing of all 6 tools
+Helper scripts (for example `scripts/real-integration-test.ts`) assume a fully configured Claude CLI and remain opt-in.
 
 ### Running Tests
 
 ```bash
-# Run all tests
 npm test
-
-# Watch mode
-npm run test:watch
-
-# Generate coverage report
-npm run test:coverage
 ```
 
 ## Project Structure
 
 ```
 ├── src/
-│   ├── server.ts              # MCP server core implementation (790 lines)
+│   ├── core/
+│   │   ├── logger.ts          # Safe logging wrapper
+│   │   ├── message-pump.ts    # Streaming message consumer
+│   │   ├── schemas.ts         # Shared Zod schemas
+│   │   ├── session-store.ts   # In-memory session registry
+│   │   └── types.ts           # Shared type definitions
+│   ├── server.ts              # Tool registration & runtime wiring
 │   └── cli.ts                 # CLI entry point
 ├── scripts/
-│   ├── mcp-smoke.ts           # Smoke test script
-│   └── real-integration-test.ts # Full integration test
+│   └── real-integration-test.ts
 ├── tests/
-│   ├── server.test.ts         # Unit tests (38 tests)
-│   ├── mcp-tools.test.ts      # Tool layer tests (45 tests)
-│   ├── integration.test.ts    # Integration tests (29 tests)
-│   └── TEST_GUIDE.md          # Complete testing documentation
+│   ├── message-pump.test.ts   # Streaming behaviour & cleanup
+│   ├── session-store.test.ts  # SessionStore guard rails
+│   └── TEST_GUIDE.md          # Test plan and coverage notes
+├── jest.config.js
 ├── package.json
 ├── tsconfig.json
-├── jest.config.js
-├── CLAUDE.md                  # Architecture guide
-├── AGENTS.md                  # AI collaboration conventions
-└── README.md                  # This file
+├── CLAUDE.md
+├── AGENTS.md
+└── README.md
 ```
 
 ## Development

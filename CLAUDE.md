@@ -73,6 +73,23 @@ includeThinking: true/false      # 默认 false，是否返回思考过程
   - `sessionId`
   - `activeSessions`: 剩余会话数量。
 
+### `claude_session_list`
+
+- **功能**：列出当前存活的会话概要信息。
+- **参数**：无。
+- **返回**：
+  - `total`: 当前会话数量。
+  - `sessions`: `SessionSummary[]`，包含 `sessionId`、`model`、`permissionMode`、`cwd`、`createdAt`、`activeQueries`、`closed` 等字段。
+
+### `claude_session_status`
+
+- **功能**：查询指定会话的详细状态与挂起查询队列。
+- **参数**：`sessionId` *(string, required)*。
+- **返回**：
+  - `session`: 单个 `SessionSummary`。
+  - `pendingQueries`: 每个查询的 `includeThinking`、`closeAfter`、`completed`、`toolInvocationCount` 等信息。
+  - `waitingModelListeners`: 当前等待模型更新的监听器数量。
+
 ### `claude_chat_query`
 
 - **功能**：向指定会话发送用户提示词，获取流式回复。
@@ -122,6 +139,13 @@ includeThinking: true/false      # 默认 false，是否返回思考过程
 - **实现**：调用 `client.setPermissionMode`。
 - **返回**：`{ sessionId, permissionMode }`。
 
+### `claude_server_config`
+
+- **功能**：查询或更新服务器级运行参数。
+- **参数**：
+  - `modelUpdateTimeoutMs` *(number, optional)*：自定义模型切换等待超时时间（毫秒）。
+- **返回**：`{ modelUpdateTimeoutMs }`；若设置新值，将同步写入并通过日志提示。
+
 ### `claude_direct_query` ⭐ 一键查询工具
 
 - **功能**：一步到位的查询工具，自动创建临时会话、执行查询、销毁会话。无需手动管理会话生命周期。
@@ -152,12 +176,12 @@ includeThinking: true/false      # 默认 false，是否返回思考过程
 
 ## 实现注意事项
 
-- 会话映射：使用 `Map<string, ClaudeSessionState>` 管理，结构中至少包含 `client`、`listeners`、`lastModel`、`cwd`、`createdAt` 等字段；创建客户端时即启动 `receiveMessages()` 的消费协程，确保只创建一次。
-- 错误处理：`ClaudeAgentSDKClient` 抛出的异常应转换为 MCP 错误响应，同时在日志中给出上下文（sessionId、提示词摘要）。
-- 资源清理：`claude_session_close` 或进程退出时调用 `client.disconnect()`，解除挂起的流。
-- 查询执行采用严格队列模型，仅允许单一活动查询；若 CLI 主动退出，挂起的查询会被逐一拒绝并写入 `error` 日志。
-- `system` 初始化消息会同步更新缓存中的模型与权限模式信息。
-- 测试：优先编写针对工具层的单元测试，模拟 Claude SDK 输出，验证日志/结果格式是否符合约定。
+- 会话存储：通过 `SessionStore` 统一管理，会话实体位于 `ClaudeSessionState`，包含 `pendingQueries`、`modelWaiters` 等字段。
+- 消息泵：`MessagePump` 负责串行消费 `receiveMessages()`，并依赖回调式 `shutdownSession` 统一清理资源与队列。
+- 资源清理：`shutdownSession` 会记录日志、拒绝未完成查询、清空 `modelWaiters` 并调用 `client.disconnect()`；`SIGINT/SIGTERM` 会遍历关闭所有会话后再退出。
+- 并发约束：同一会话仅允许单一活跃查询，违反时抛出 `McpError(ErrorCode.InvalidParams, ...)`。
+- `system` 消息用于更新模型与权限模式，同时唤醒 `waitForModelUpdate`。
+- 测试：当前 Jest 单测覆盖 `SessionStore` 与 `MessagePump` 的关键路径；新增模块时请同步补充。
 - 禁止将业务外的教程（安装 CLI、npm 登录等）写入仓库文档。
 
 ## AI 协作者操作约定

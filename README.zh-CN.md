@@ -8,16 +8,17 @@ Claude Agent MCP 是一个基于 Node.js 的 Model Context Protocol (MCP) 服务
 
 ### 主要功能
 
-- **MCP 服务器实现**：基于 `@modelcontextprotocol/sdk` 实现，完全符合 MCP 协议标准
-- **会话管理**：复用 `ClaudeAgentSDKClient` 进行强大的会话管理
-- **六大核心工具**：
-  - `claude_session_create` - 创建新的 Claude 会话
-  - `claude_session_close` - 关闭并清理会话
-  - `claude_chat_query` - 发送提示词并接收流式响应
-  - `claude_chat_interrupt` - 中断活跃查询
-  - `claude_chat_model` - 在不同模型之间切换
-  - `claude_chat_mode` - 更改权限模式
-- **流式日志**：为不同消息类型提供 `info`、`debug` 和 `error` 级别的结构化日志
+- **标准化 MCP 服务器**：基于 `@modelcontextprotocol/sdk`，支持日志输出与优雅的关闭流程。
+- **模块化运行时**：`src/core/` 下拆分日志、会话存储、消息泵与 Zod 模式，便于维护与测试。
+- **会话工具矩阵**：
+  - `claude_session_create` / `claude_session_close`
+  - `claude_session_list` / `claude_session_status`
+  - `claude_direct_query` 适用于一次性问答场景
+- **对话控制**：
+  - `claude_chat_query`、`claude_chat_interrupt`
+  - `claude_chat_model`、`claude_chat_mode`
+  - `claude_server_config` 可调整运行期参数（例如模型更新超时）
+- **流式消息泵**：消费 Claude CLI 的 `receiveMessages()`，按 MCP 协议发送 `info` / `debug` / `error` 日志。服务器声明 MCP 的 `logging` 能力，客户端可订阅 `notifications/message` 并通过 `logging/setLevel`（例如 `client.setLoggingLevel('debug')`）调节日志级别。
 
 ## 快速开始
 
@@ -107,37 +108,40 @@ args = ["claude-agent-mcp"]
 
 ## 测试
 
-运行完整的集成测试套件：
+仓库提供针对核心模块的 Jest 单元测试：
+
+- `tests/message-pump.test.ts`：验证流式消息聚合、模型等待与异常时的资源清理。
+- `tests/session-store.test.ts`：覆盖会话增删改查与安全校验逻辑。
+
+额外的 `scripts/real-integration-test.ts` 依赖完整的 Claude CLI 环境，可按需手动运行。
 
 ```bash
-npm install
-npm run build
-npx ts-node scripts/real-integration-test.ts
+npm test
 ```
-
-测试覆盖：
-- ✅ 112 个单元测试覆盖所有核心功能
-- ✅ 29 个集成测试确保部署就绪
-- ✅ 完整的 MCP 协议合规性验证
 
 ## 项目结构
 
 ```
 ├── src/
-│   ├── server.ts              # MCP 服务器核心实现（790 行）
-│   └── cli.ts                 # CLI 启动入口
+│   ├── core/
+│   │   ├── logger.ts          # 日志封装
+│   │   ├── message-pump.ts    # 流式消息泵
+│   │   ├── schemas.ts         # Zod 参数定义
+│   │   ├── session-store.ts   # 会话存储
+│   │   └── types.ts           # 共享类型声明
+│   ├── server.ts              # 工具注册与运行时装配
+│   └── cli.ts                 # CLI 入口
 ├── scripts/
-│   ├── mcp-smoke.ts           # 烟雾测试脚本
-│   └── real-integration-test.ts # 完整集成测试
+│   └── real-integration-test.ts
 ├── tests/
-│   ├── server.test.ts         # 单元测试（38 个）
-│   ├── mcp-tools.test.ts      # 工具层测试（45 个）
-│   ├── integration.test.ts    # 集成测试（29 个）
-│   └── TEST_GUIDE.md          # 完整测试文档
+│   ├── message-pump.test.ts   # 流式逻辑单测
+│   ├── session-store.test.ts  # 会话存储单测
+│   └── TEST_GUIDE.md          # 测试说明
+├── jest.config.js
 ├── package.json
 ├── tsconfig.json
-├── CLAUDE.md                  # 架构指南
-└── README.zh-CN.md            # 本文件
+├── CLAUDE.md
+└── README.zh-CN.md
 ```
 
 ## 开发
