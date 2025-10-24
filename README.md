@@ -198,10 +198,10 @@ npm install -g claude-agent-mcp   # Global installation
 
 ### `claude_session_create`
 
-Creates a new Claude session or ensures an existing session stays active.
+Creates a new Claude session, or resumes a previously saved Claude CLI conversation.
 
 **Parameters:**
-- `sessionId` (optional): Existing session to reuse; omit to create a new one automatically
+- `sessionId` (optional): Claude CLI conversation ID to resume (maps to `--resume`); omit to start a fresh session
 - `cwd` (optional): Working directory
 - `model` (optional): Model name (`opus` | `sonnet` | `haiku`)
 - `permissionMode` (optional): Permission mode (default|acceptEdits|plan|bypassPermissions)
@@ -217,10 +217,11 @@ Creates a new Claude session or ensures an existing session stays active.
   "systemPrompt": "prompt",
   "active": true,
   "createdAt": "timestamp",
-  "reused": false
+  "resumed": false,
+  "resumedFrom": null
 }
 ```
-If `sessionId` is supplied, the call verifies the session is still open and returns the same schema with `reused: true`.
+If `sessionId` is supplied, the SDK invokes Claude CLI with `--resume`, and `resumed`/`resumedFrom` reflect the attempted resume.
 
 ### `claude_chat_query`
 
@@ -364,4 +365,4 @@ If you encounter any issues, please:
 
 **Last Updated**: October 24, 2025
 
-**Version**: 1.2.0
+**Version**: 1.3.0

@@ -11,7 +11,7 @@
 ## 总体设计
 
 - 使用 `@modelcontextprotocol/sdk` 搭建 `McpServer`，默认通过 `StdioServerTransport` 运行。
-- 会话管理完全依赖 `ClaudeAgentSDKClient`，并按照 `sessionId` 复用客户端实例。
+- 会话管理完全依赖 `ClaudeAgentSDKClient`，每个 MCP 会话拥有独立的客户端实例。
 - MCP 工具在执行期间同步监听 `receiveMessages()`，将流式内容通过 MCP 通知回传，结束后再返回整合结果。
 - 所有 Claude 请求都要求调用方在环境中预先配置 `ANTHROPIC_API_KEY`。
 
@@ -53,23 +53,24 @@ includeThinking: true/false      # 默认 false，是否返回思考过程
 
 ### `claude_session_create`
 
-- **功能**：创建新的 Claude 会话，或传入 `sessionId` 以复用已存在的会话。
+- **功能**：创建新的 Claude 会话，或通过传入 `sessionId` 使用 Claude CLI 的 `--resume` 恢复历史会话。
 - **参数**：
-  - `sessionId` *(string, optional)*：已有会话 ID，复用时需传入；不传则自动创建新会话。
+  - `sessionId` *(string, optional)*：Claude CLI 历史会话 ID，恢复时需传入；不传则创建新会话。
   - `cwd` *(string, optional)*：工作目录
   - `model` *(string, optional)*：模型选择：`opus` | `sonnet` | `haiku`，不传则使用默认模型
   - `permissionMode` *(string, optional)*：权限模式：`default` | `acceptEdits` | `plan` | `bypassPermissions`，不传则使用 `default`
   - `systemPrompt` *(string, optional)*：自定义系统提示词
-- **注意**：模型字段会强制限制为 `opus` / `sonnet` / `haiku`，权限模式仅允许枚举值；复用会话时不得变更上述参数，否则返回 `InvalidParams`。
+- **注意**：模型字段会强制限制为 `opus` / `sonnet` / `haiku`，权限模式仅允许枚举值；当传入 `sessionId` 时，会调用 CLI `--resume`，若 CLI 不存在该会话将抛出错误。
 - **返回**：
-  - `sessionId`: 生成或复用的会话 ID。
+  - `sessionId`: MCP 分配的会话 ID。
   - `model`: 当前模型。
   - `cwd`: 工作目录。
   - `permissionMode`: 当前权限模式。
   - `systemPrompt`: 系统提示词。
   - `active`: 布尔值，标记是否已连接成功。
   - `createdAt`: 创建时间。
-  - `reused`: 布尔值，标记是否为复用会话。
+  - `resumed`: 布尔值，标记是否尝试通过 CLI 恢复。
+  - `resumedFrom`: 若恢复，记录传入的 CLI 会话 ID；否则为 `null`。
 
 ### `claude_session_close`
 
@@ -85,7 +86,7 @@ includeThinking: true/false      # 默认 false，是否返回思考过程
 - **参数**：无。
 - **返回**：
   - `total`: 当前会话数量。
-  - `sessions`: `SessionSummary[]`，包含 `sessionId`、`model`、`permissionMode`、`cwd`、`createdAt`、`activeQueries`、`closed` 等字段。
+- `sessions`: `SessionSummary[]`，包含 `sessionId`、`model`、`permissionMode`、`cwd`、`resumedFrom`、`createdAt`、`activeQueries`、`closed` 等字段。
 
 ### `claude_session_status`
 

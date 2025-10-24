@@ -189,18 +189,18 @@ npm install -g claude-agent-mcp   # 全局安装
 ## 工具参考
 
 ### `claude_session_create`
-创建一个新的 Claude 会话，或确保已有会话保持可用。
+创建一个新的 Claude 会话，或通过 Claude CLI 的 `--resume` 恢复历史会话。
 
 **参数：**
-- `sessionId`（可选）：传入已存在的会话 ID 以复用；不传则自动创建新会话
+- `sessionId`（可选）：Claude CLI 中的历史会话 ID，用于 `--resume`；不传则启动全新会话
 - `cwd`（可选）：工作目录
 - `model`（可选）：模型名称（仅限 `opus`、`sonnet`、`haiku`）
 - `permissionMode`（可选）：权限模式（default|acceptEdits|plan|bypassPermissions）
 - `systemPrompt`（可选）：自定义系统提示
 
-**返回值：** `{ sessionId, model, cwd, permissionMode, systemPrompt, active, createdAt, reused }`
+**返回值：** `{ sessionId, model, cwd, permissionMode, systemPrompt, active, createdAt, resumed, resumedFrom }`
 
-当传入 `sessionId` 时，若会话仍然有效则返回同一结构，并将 `reused` 标记为 `true`；当会话不存在或已关闭会报错。
+当传入 `sessionId` 时，SDK 会调用 Claude CLI 的 `--resume` 选项尝试恢复，并在返回值中标记 `resumed=true`、`resumedFrom=<会话ID>`。
 
 ### `claude_chat_query`
 发送提示词给 Claude 并接收响应。

@@ -46,6 +46,7 @@ export interface ClaudeSessionState {
     model?: string | null;
     permissionMode?: PermissionMode | null;
     systemPrompt?: string | null;
+    resume?: string | null;
   };
   createdAt: Date;
   pendingQueries: PendingQuery[];
@@ -65,6 +66,7 @@ export type SessionSummary = {
   model: string | null | undefined;
   permissionMode: PermissionMode | null | undefined;
   cwd: string | null | undefined;
+  resumedFrom: string | null | undefined;
   createdAt: string;
   activeQueries: number;
   closed: boolean;

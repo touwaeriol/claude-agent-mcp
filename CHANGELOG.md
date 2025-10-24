@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2025-10-24
+
+### Changed
+- `claude_session_create` 将 `sessionId` 参数映射为 SDK 的 `resume` 选项，用于触发 Claude CLI `--resume`，并通过返回值的 `resumed`/`resumedFrom` 标记恢复状态。
+
 ## [1.2.0] - 2025-10-24
 
 ### Added

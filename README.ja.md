@@ -185,15 +185,16 @@ npm install -g claude-agent-mcp   # グローバルインストール
 ## ツールリファレンス
 
 ### `claude_session_create`
-新しい Claude セッションを作成します。
+新しい Claude セッションを作成するか、Claude CLI の `--resume` を使って既存セッションを再開します。
 
 **パラメータ：**
+- `sessionId`（オプション）：再開したい Claude CLI のセッション ID（`--resume` に対応）
 - `cwd`（オプション）：作業ディレクトリ
-- `model`（オプション）：モデル名
+- `model`（オプション）：モデル名（`opus` | `sonnet` | `haiku`）
 - `permissionMode`（オプション）：権限モード（default|acceptEdits|plan|bypassPermissions）
 - `systemPrompt`（オプション）：カスタムシステムプロンプト
 
-**戻り値：** `{ sessionId, model, cwd, active, createdAt }`
+**戻り値：** `{ sessionId, model, cwd, permissionMode, systemPrompt, active, createdAt, resumed, resumedFrom }`
 
 ### `claude_chat_query`
 Claude にプロンプトを送信して応答を受け取ります。

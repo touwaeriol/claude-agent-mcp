@@ -59,6 +59,7 @@ function summarizeSession(session: ClaudeSessionState): SessionSummary {
     model: session.options.model ?? null,
     permissionMode: session.options.permissionMode ?? null,
     cwd: session.options.cwd ?? null,
+    resumedFrom: session.options.resume ?? null,
     createdAt: session.createdAt.toISOString(),
     activeQueries: session.pendingQueries.length,
     closed: session.closed,
@@ -67,14 +68,14 @@ function summarizeSession(session: ClaudeSessionState): SessionSummary {
 
 function createSessionToolResult(
   session: ClaudeSessionState,
-  reused: boolean
+  resumed: boolean
 ): CallToolResult {
   return {
     content: [
       {
         type: "text",
-        text: reused
-          ? `Claude session active: ${session.sessionId}`
+        text: resumed
+          ? `Claude session resumed: ${session.sessionId}`
           : `Claude session created: ${session.sessionId}`,
       },
     ],
@@ -86,7 +87,8 @@ function createSessionToolResult(
       systemPrompt: session.options.systemPrompt,
       active: !session.closed,
       createdAt: session.createdAt.toISOString(),
-      reused,
+      resumed,
+      resumedFrom: session.options.resume,
     },
   };
 }
@@ -160,38 +162,11 @@ function ensureSession(sessionId: string): ClaudeSessionState {
 }
 
 server.tool("claude_session_create", createSessionArgs, async (args) => {
-  const requestedSessionId = toNullable(args.sessionId);
+  const resumeToken = toNullable(args.sessionId);
   const requestedCwd = toNullable(args.cwd);
   const requestedModel = toNullable(args.model);
   const requestedSystemPrompt = toNullable(args.systemPrompt);
   const requestedPermissionMode = args.permissionMode;
-
-  if (requestedSessionId) {
-    const existing = sessionStore.get(requestedSessionId);
-    if (!existing || existing.closed) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
-        `Session ${requestedSessionId} does not exist or is closed. Omit sessionId to create a new session.`
-      );
-    }
-
-    if (
-      (requestedCwd !== undefined && requestedCwd !== existing.options.cwd) ||
-      (requestedModel !== undefined && requestedModel !== existing.options.model) ||
-      (requestedSystemPrompt !== undefined &&
-        requestedSystemPrompt !== existing.options.systemPrompt) ||
-      (requestedPermissionMode !== undefined &&
-        requestedPermissionMode !== existing.options.permissionMode)
-    ) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
-        `Cannot override options when reusing session ${requestedSessionId}.`
-      );
-    }
-
-    await sendLog(existing, "info", `Session ${requestedSessionId} reused.`);
-    return createSessionToolResult(existing, true);
-  }
 
   const sessionId = randomUUID();
   const clientOptions = {
@@ -199,6 +174,7 @@ server.tool("claude_session_create", createSessionArgs, async (args) => {
     model: requestedModel ?? null,
     permissionMode: requestedPermissionMode ?? null,
     systemPrompt: requestedSystemPrompt ?? null,
+    resume: resumeToken ?? null,
     includePartialMessages: true,
   } satisfies ConstructorParameters<typeof ClaudeAgentSDKClient>[0];
 
@@ -220,6 +196,7 @@ server.tool("claude_session_create", createSessionArgs, async (args) => {
       model: clientOptions.model,
       permissionMode: clientOptions.permissionMode,
       systemPrompt: clientOptions.systemPrompt,
+      resume: clientOptions.resume,
     },
     createdAt: new Date(),
     pendingQueries: [],
@@ -229,9 +206,17 @@ server.tool("claude_session_create", createSessionArgs, async (args) => {
 
   sessionStore.add(session);
   messagePump.start(session);
-  await sendLog(session, "info", `Session ${sessionId} created.`);
+  if (resumeToken) {
+    await sendLog(
+      session,
+      "info",
+      `Session ${sessionId} resumed from ${resumeToken}.`
+    );
+  } else {
+    await sendLog(session, "info", `Session ${sessionId} created.`);
+  }
 
-  return createSessionToolResult(session, false);
+  return createSessionToolResult(session, Boolean(resumeToken));
 });
 
 server.tool("claude_session_close", closeSessionArgs, async ({ sessionId }) => {
