@@ -7,9 +7,12 @@ export const permissionModeSchema = z.enum([
   "bypassPermissions",
 ]);
 
+export const modelNameSchema = z.enum(["opus", "sonnet", "haiku"]);
+
 export const createSessionArgs = {
+  sessionId: z.string().min(1).optional(),
   cwd: z.string().min(1).optional(),
-  model: z.string().min(1).optional(),
+  model: modelNameSchema.optional(),
   permissionMode: permissionModeSchema.optional(),
   systemPrompt: z.string().min(1).optional(),
 } satisfies z.ZodRawShape;
@@ -35,7 +38,7 @@ export const interruptSchema = z.object(interruptArgs);
 
 export const modelArgs = {
   sessionId: z.string().min(1),
-  model: z.string().min(1),
+  model: modelNameSchema,
 } satisfies z.ZodRawShape;
 export const modelSchema = z.object(modelArgs);
 
@@ -47,7 +50,7 @@ export const modeSchema = z.object(modeArgs);
 
 export const directQueryArgs = {
   prompt: z.string(),
-  model: z.string().min(1).optional(),
+  model: modelNameSchema.optional(),
   permissionMode: permissionModeSchema.optional(),
   includeThinking: z.boolean().optional(),
   systemPrompt: z.string().min(1).optional(),

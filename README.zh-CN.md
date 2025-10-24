@@ -189,15 +189,18 @@ npm install -g claude-agent-mcp   # 全局安装
 ## 工具参考
 
 ### `claude_session_create`
-创建一个新的 Claude 会话。
+创建一个新的 Claude 会话，或确保已有会话保持可用。
 
 **参数：**
+- `sessionId`（可选）：传入已存在的会话 ID 以复用；不传则自动创建新会话
 - `cwd`（可选）：工作目录
-- `model`（可选）：模型名称
+- `model`（可选）：模型名称（仅限 `opus`、`sonnet`、`haiku`）
 - `permissionMode`（可选）：权限模式（default|acceptEdits|plan|bypassPermissions）
 - `systemPrompt`（可选）：自定义系统提示
 
-**返回值：** `{ sessionId, model, cwd, active, createdAt }`
+**返回值：** `{ sessionId, model, cwd, permissionMode, systemPrompt, active, createdAt, reused }`
+
+当传入 `sessionId` 时，若会话仍然有效则返回同一结构，并将 `reused` 标记为 `true`；当会话不存在或已关闭会报错。
 
 ### `claude_chat_query`
 发送提示词给 Claude 并接收响应。
@@ -215,7 +218,7 @@ npm install -g claude-agent-mcp   # 全局安装
 
 **参数：**
 - `sessionId`（必需）：会话 ID
-- `model`（必需）：目标模型
+- `model`（必需）：目标模型（仅限 `opus`、`sonnet`、`haiku`）
 
 **返回值：** `{ requestedModel, resolvedModel }`
 
@@ -263,4 +266,4 @@ MIT
 
 ---
 
-**最后更新**：2025 年 10 月 23 日
+**最后更新**：2025 年 10 月 24 日

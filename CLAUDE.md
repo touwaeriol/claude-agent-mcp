@@ -53,17 +53,23 @@ includeThinking: true/false      # 默认 false，是否返回思考过程
 
 ### `claude_session_create`
 
-- **功能**：创建新的 Claude 会话并返回 `sessionId`。
+- **功能**：创建新的 Claude 会话，或传入 `sessionId` 以复用已存在的会话。
 - **参数**：
+  - `sessionId` *(string, optional)*：已有会话 ID，复用时需传入；不传则自动创建新会话。
   - `cwd` *(string, optional)*：工作目录
   - `model` *(string, optional)*：模型选择：`opus` | `sonnet` | `haiku`，不传则使用默认模型
   - `permissionMode` *(string, optional)*：权限模式：`default` | `acceptEdits` | `plan` | `bypassPermissions`，不传则使用 `default`
   - `systemPrompt` *(string, optional)*：自定义系统提示词
+- **注意**：模型字段会强制限制为 `opus` / `sonnet` / `haiku`，权限模式仅允许枚举值；复用会话时不得变更上述参数，否则返回 `InvalidParams`。
 - **返回**：
-  - `sessionId`: 生成的会话 ID。
+  - `sessionId`: 生成或复用的会话 ID。
   - `model`: 当前模型。
   - `cwd`: 工作目录。
+  - `permissionMode`: 当前权限模式。
+  - `systemPrompt`: 系统提示词。
   - `active`: 布尔值，标记是否已连接成功。
+  - `createdAt`: 创建时间。
+  - `reused`: 布尔值，标记是否为复用会话。
 
 ### `claude_session_close`
 

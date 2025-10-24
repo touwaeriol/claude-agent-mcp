@@ -65,6 +65,32 @@ function summarizeSession(session: ClaudeSessionState): SessionSummary {
   };
 }
 
+function createSessionToolResult(
+  session: ClaudeSessionState,
+  reused: boolean
+): CallToolResult {
+  return {
+    content: [
+      {
+        type: "text",
+        text: reused
+          ? `Claude session active: ${session.sessionId}`
+          : `Claude session created: ${session.sessionId}`,
+      },
+    ],
+    structuredContent: {
+      sessionId: session.sessionId,
+      model: session.options.model,
+      cwd: session.options.cwd,
+      permissionMode: session.options.permissionMode,
+      systemPrompt: session.options.systemPrompt,
+      active: !session.closed,
+      createdAt: session.createdAt.toISOString(),
+      reused,
+    },
+  };
+}
+
 async function shutdownSession(sessionId: string): Promise<void> {
   const session = sessionStore.get(sessionId);
   if (!session) {
@@ -134,12 +160,45 @@ function ensureSession(sessionId: string): ClaudeSessionState {
 }
 
 server.tool("claude_session_create", createSessionArgs, async (args) => {
+  const requestedSessionId = toNullable(args.sessionId);
+  const requestedCwd = toNullable(args.cwd);
+  const requestedModel = toNullable(args.model);
+  const requestedSystemPrompt = toNullable(args.systemPrompt);
+  const requestedPermissionMode = args.permissionMode;
+
+  if (requestedSessionId) {
+    const existing = sessionStore.get(requestedSessionId);
+    if (!existing || existing.closed) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Session ${requestedSessionId} does not exist or is closed. Omit sessionId to create a new session.`
+      );
+    }
+
+    if (
+      (requestedCwd !== undefined && requestedCwd !== existing.options.cwd) ||
+      (requestedModel !== undefined && requestedModel !== existing.options.model) ||
+      (requestedSystemPrompt !== undefined &&
+        requestedSystemPrompt !== existing.options.systemPrompt) ||
+      (requestedPermissionMode !== undefined &&
+        requestedPermissionMode !== existing.options.permissionMode)
+    ) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        `Cannot override options when reusing session ${requestedSessionId}.`
+      );
+    }
+
+    await sendLog(existing, "info", `Session ${requestedSessionId} reused.`);
+    return createSessionToolResult(existing, true);
+  }
+
   const sessionId = randomUUID();
   const clientOptions = {
-    cwd: toNullable(args.cwd) ?? null,
-    model: toNullable(args.model) ?? null,
-    permissionMode: args.permissionMode ?? null,
-    systemPrompt: toNullable(args.systemPrompt) ?? null,
+    cwd: requestedCwd ?? null,
+    model: requestedModel ?? null,
+    permissionMode: requestedPermissionMode ?? null,
+    systemPrompt: requestedSystemPrompt ?? null,
     includePartialMessages: true,
   } satisfies ConstructorParameters<typeof ClaudeAgentSDKClient>[0];
 
@@ -172,24 +231,7 @@ server.tool("claude_session_create", createSessionArgs, async (args) => {
   messagePump.start(session);
   await sendLog(session, "info", `Session ${sessionId} created.`);
 
-  const response: CallToolResult = {
-    content: [
-      {
-        type: "text",
-        text: `Claude session created: ${sessionId}`,
-      },
-    ],
-    structuredContent: {
-      sessionId,
-      model: session.options.model,
-      cwd: session.options.cwd,
-      permissionMode: session.options.permissionMode,
-      systemPrompt: session.options.systemPrompt,
-      active: true,
-      createdAt: session.createdAt.toISOString(),
-    },
-  };
-  return response;
+  return createSessionToolResult(session, false);
 });
 
 server.tool("claude_session_close", closeSessionArgs, async ({ sessionId }) => {

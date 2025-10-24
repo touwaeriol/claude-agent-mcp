@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-10-24
+
+### Added
+- Schema-level tests covering model与权限参数的枚举校验，确保非法取值立即被拒绝。
+
+### Changed
+- `claude_session_create` 支持传入 `sessionId` 复用活跃会话，同时禁止在复用时修改现有选项。
+- 所有模型参数统一限制为 `opus`、`sonnet` 或 `haiku`，非法模型值会返回 `InvalidParams` 错误。
+- 文档更新（README、CLAUDE.md）以反映新的参数约束与会话复用行为。
+
+### Fixed
+- 防止使用过期或关闭的会话 ID 创建新会话，避免隐式生成冲突状态。
+
 ## [1.1.2] - 2025-10-23
 
 ### Added

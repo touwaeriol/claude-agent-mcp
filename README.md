@@ -198,11 +198,12 @@ npm install -g claude-agent-mcp   # Global installation
 
 ### `claude_session_create`
 
-Creates a new Claude session.
+Creates a new Claude session or ensures an existing session stays active.
 
 **Parameters:**
+- `sessionId` (optional): Existing session to reuse; omit to create a new one automatically
 - `cwd` (optional): Working directory
-- `model` (optional): Model name
+- `model` (optional): Model name (`opus` | `sonnet` | `haiku`)
 - `permissionMode` (optional): Permission mode (default|acceptEdits|plan|bypassPermissions)
 - `systemPrompt` (optional): Custom system prompt
 
@@ -212,10 +213,14 @@ Creates a new Claude session.
   "sessionId": "uuid",
   "model": "model-name",
   "cwd": "working-directory",
+  "permissionMode": "default",
+  "systemPrompt": "prompt",
   "active": true,
-  "createdAt": "timestamp"
+  "createdAt": "timestamp",
+  "reused": false
 }
 ```
+If `sessionId` is supplied, the call verifies the session is still open and returns the same schema with `reused: true`.
 
 ### `claude_chat_query`
 
@@ -255,7 +260,7 @@ Switch the model for a session.
 
 **Parameters:**
 - `sessionId` (required): Session ID
-- `model` (required): Target model
+- `model` (required): Target model (`opus` | `sonnet` | `haiku`)
 
 **Returns:**
 ```json
@@ -357,6 +362,6 @@ If you encounter any issues, please:
 
 ---
 
-**Last Updated**: October 23, 2025
+**Last Updated**: October 24, 2025
 
-**Version**: 1.0.1
+**Version**: 1.2.0
